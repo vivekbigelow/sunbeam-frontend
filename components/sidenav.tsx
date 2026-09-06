@@ -52,7 +52,7 @@ export default function Sidenav () {
     ]
     return (
         <div className="w-sm bg-white border-r-2">
-            <aside className="flex h-full flex-col w-full break-words px-4 overflow-x-hidden columns-1">
+            <aside className="flex h-full flex-col w-full break-words px-10 text-lg py-10 overflow-x-hidden columns-1">
                 {/* Top */}
                 <div>
                     <div>
