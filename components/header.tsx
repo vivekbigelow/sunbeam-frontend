@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-export default function header() {
+export default function Header() {
     return (
         <header className="flex items-center justify-between text-slate-100">
             <Link href="/">
