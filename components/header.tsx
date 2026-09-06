@@ -7,7 +7,10 @@ export default function Header() {
             <Link href="/">
                 <Image src="/logo.jpg" alt="sunbeam-logo" width={100} height={100} priority />
             </Link>
+            <div className="flex gap-5">
             <input className="w-dvh placeholder:text-slate-400 text-slate-950 search-bar"type="search" placeholder="Search your music library" />
+            <button>Search</button>
+            </div>
             <div className="flex items-center mx-10">
 
                 <Link className="text-lg" href="/">
