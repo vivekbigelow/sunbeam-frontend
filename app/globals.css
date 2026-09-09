@@ -725,10 +725,6 @@ select:active {
   background-image: svg-load("./icon/button-down-active.svg");
 }
 
-a {
-  
-}
-
 a:focus {
   outline: 1px dotted var(--link-blue);
 }
