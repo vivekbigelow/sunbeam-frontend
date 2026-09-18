@@ -1,0 +1,752 @@
+datasource db {
+  provider  = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+//================================================================================================
+// ENUMS
+//================================================================================================
+
+enum ReleaseType {
+  ALBUM
+  EP
+  SINGLE
+  COMPILATION
+  LIVE
+  DEMO
+  BOOTLEG
+  MIXTAPE
+  SOUNDTRACK
+  REMIX
+  REISSUE
+  REMASTER
+  BOX_SET
+  OTHER
+}
+
+enum ArtistRole {
+  PRIMARY
+  FEATURED
+  REMIXER
+  COMPOSER
+  DJ
+  OTHER
+}
+
+enum CreditRole {
+  PRODUCER
+  EXECUTIVE_PRODUCER
+  ENGINEER
+  MIXING
+  MASTERING
+  DESIGN
+  PHOTOGRAPHY
+  LYRICIST
+  COMPOSER
+  SONGWRITER
+  OTHER
+}
+
+enum LocationType {
+  FROM
+  FORMED_IN
+  BASED_IN
+  ASSOCIATED_WITH
+}
+
+enum SceneRole {
+  MEMBER
+  ASSOCIATED
+  INFLUENTIAL
+  ORIGINATED
+}
+
+enum CollectionStatus {
+  OWNED
+  WANTED
+  PREVIOUSLY_OWNED
+  CONTRIBUTED
+}
+
+
+
+//================================================================================================
+// USER
+//================================================================================================
+
+model User {
+  id                        Int             @id @default(autoincrement())
+  email                     String          @unique
+  password                  String
+  username                  String          @unique
+  displayName               String?         @map("display_name")
+  bio                       String?         @db.VarChar(500)
+  avatarUrl                 String?         @map("avatar_url")
+
+  ratings                   Rating[]
+  reviews                   Review[]
+  comments                  Comment[]
+  recordings                Recording[]
+  playlists                 Playlist[]
+
+  listeningHistory          ListeningHistory[]
+
+  recommendationsSent       Recommendation[] @relation("RecommendationsSent")
+  recommendationsReceived   Recommendation[] @relation("RecommendationsReceived")
+
+  following                 Follow[]         @relation("UserFollowing")
+  followers                 Follow[]         @relation("UserFollowers")
+
+  createdAt                 DateTime         @default(now()) @map("created_at")
+  updatedAt                 DateTime         @updatedAt @map("updated_at") 
+  
+  @@index([username])
+  @@map("users")
+}
+
+//================================================================================================
+// ARTIST
+//================================================================================================
+
+model Artist {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(200)
+  bio         String?  @db.VarChar(500)
+  imageUrl    String?  @map("image_url")
+
+  aliases     ArtistAlias[]
+
+  releases    ReleaseArtist[]
+  recordings  RecordingArtist[]
+
+  credits     Credit[]
+
+  locations   ArtistLocation[]
+  scenes      ArtistScene[]
+
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([name])
+  @@map("artists")
+}
+
+//================================================================================================
+// ARTIST ALIASES
+//================================================================================================
+
+model ArtistAlias {
+  id          Int      @id @default(autoincrement())
+  artistId    Int      @map("artist_id")
+  artist      Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  name        String   @db.VarChar(200)
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([name])
+  @@index([artistId])
+  @@map("artist_aliases")
+}
+
+//================================================================================================
+// LOCATIONS
+//================================================================================================
+
+model Location {
+  id          Int     @id @default(autoincrement())
+  city        String? @db.VarChar(100)
+  region      String? @db.VarChar(100)
+  country     String  @db.VarChar(100)
+  
+  artists     ArtistLocation[]
+  scenes      Scene[]
+  releases    Release[]
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("locations")
+}
+
+//================================================================================================
+// ARTIST <-> LOCATION
+//================================================================================================
+
+model ArtistLocation {
+  id         Int          @id @default(autoincrement())
+
+  artistId   Int          @map("artist_id")
+  locationId Int          @map("location_id")
+
+  type       LocationType @default(FORMED_IN)
+
+  artist     Artist       @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  location   Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([artistId, locationId, type])
+  @@index([artistId])
+  @@index([locationId])
+  @@map("artist_locations")
+}
+
+//================================================================================================
+// MUSIC SCENES
+//================================================================================================
+
+model Scene {
+  id            Int           @id @default(autoincrement())
+
+  name          String        @db.VarChar(200)
+  description   String?       @db.VarChar(500)
+
+  locationId    Int?          @map("location_id")
+  location      Location?     @relation(fields: [locationId], references:[id], onDelete: SetNull)
+
+  artists       ArtistScene[] 
+
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  @@index([name])
+  @@index([locationId])
+  @@map("scenes")
+}
+
+//================================================================================================
+// ARTIST <-> SCENE
+//================================================================================================
+
+model ArtistScene {
+  id           Int        @id @default(autoincrement())
+
+  artistId     Int        @map("artist_id")
+  sceneId      Int        @map("scene_id")
+
+  role         SceneRole  @default(ASSOCIATED)
+
+  artist       Artist     @relation(fields:[artistId], references:[id], onDelete: Cascade)
+  scene        Scene      @relation(fields:[sceneId], references:[id], onDelete: Cascade)
+
+  @@unique([artistId, sceneId])
+  @@index([artistId])
+  @@index([sceneId])
+  @@map("artist_scenes")
+}
+
+//================================================================================================
+// LABEL
+//================================================================================================
+
+model Label {
+  id          Int           @id @default(autoincrement())
+  name        String        @unique @db.VarChar(200)
+  description String?   
+  websiteUrl  String?       @map("website_url")
+  imageUrl    String?       @map("image_url")
+
+  releases    ReleaseLabel[]
+
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@index([name])
+  @@map("labels")
+}
+
+//================================================================================================
+// RELEASE
+// Represents an album, EP, single, etc. 
+//================================================================================================
+
+model Release {
+  id               Int           @id @default(autoincrement())
+
+  title            String        @db.VarChar(200)
+  releaseType      ReleaseType   @default(ALBUM)
+  releaseDate      DateTime?     @map("release_date")
+
+  locationId       Int?          @map("location_id")
+  location         Location?     @relation(fields:[locationId], references:[id], onDelete:SetNull)    
+  language         String?       @db.VarChar(100)
+
+  description      String?    
+
+  coverArtUrl      String?       @map("cover_art_url")
+
+  catalogNumber    String?       @map("catalog_number")  @db.VarChar(100)
+
+  artists          ReleaseArtist[]
+  tracks           ReleaseTrack[]
+
+  genres           ReleaseGenre[]
+  descriptors      ReleaseDescriptor[]
+
+  labels           ReleaseLabel[]
+
+  ratings          Rating[]
+  reviews          Review[]
+
+  recommendations  Recommendation[]
+
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  @@index([title])
+  @@index([releaseDate])
+  @@index([releaseType])
+  @@map("releases")
+}
+
+//================================================================================================
+// RELEASE <-> ARTIST 
+//================================================================================================
+
+model ReleaseArtist {
+  id          Int         @id @default(autoincrement())
+
+  releaseId   Int         @map("release_id")
+  artistId    Int         @map("artist_id")
+
+  role        ArtistRole  @default(PRIMARY)
+
+  release     Release     @relation(fields:[releaseId], references:[id], onDelete: Cascade)
+  artist      Artist      @relation(fields:[artistId], references:[id],onDelete: Cascade)
+
+  @@unique([releaseId, artistId, role])
+  @@index([releaseId])
+  @@index([artistId])
+  @@map("release_artists")
+}
+
+//================================================================================================
+// RELEASE <-> LABEL
+//================================================================================================
+
+model ReleaseLabel {
+  id        Int      @id @default(autoincrement())
+
+  releaseId Int      @map("release_id")
+  labelId   Int      @map("label_id")
+
+  release   Release  @relation(fields:[releaseId], references:[id], onDelete:Cascade)
+  label     Label    @relation(fields:[labelId], references:[id], onDelete:Cascade)
+
+  @@unique([releaseId, labelId])
+  @@index([releaseId])
+  @@index([labelId])
+  @@map("release_labels")
+}
+
+//================================================================================================
+// RECORDING
+//================================================================================================
+
+model Recording {
+  id                 Int       @id @default(autoincrement())
+
+  userId             Int      @map("user_id")
+
+  title              String    @db.VarChar(255)
+  durationSeconds    Int?      @map("duration_seconds")
+  versionName        String?   @map("version_name")  @db.VarChar(255)
+  lyrics             String? 
+  language           String?   @db.VarChar(100)
+  audioFileKey       String?   @map("audio_file_key")
+
+  uploader           User     @relation(fields:[userId],references: [id],onDelete: Cascade)
+  genres             RecordingGenre[]
+  descriptors        RecordingDescriptor[]
+  artists            RecordingArtist[]
+  releaseTracks      ReleaseTrack[]
+
+
+  credits            Credit[]
+
+  playlistRecordings      PlaylistRecording[]
+  listeningHistory   ListeningHistory[]
+  recommendations    Recommendation[]
+
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+  
+  @@index([title])
+  @@map("recordings")
+}
+
+//================================================================================================
+// RECORDING <-> ARTIST
+//================================================================================================
+
+model RecordingArtist {
+  id             Int         @id @default(autoincrement())
+  recordingId    Int         @map("recording_id")
+  artistId       Int         @map("artist_id")
+
+  role           ArtistRole  @default(PRIMARY)
+
+  recording      Recording   @relation(fields:[recordingId], references:[id], onDelete:Cascade)
+  artist         Artist      @relation(fields:[artistId], references:[id], onDelete:Cascade)
+
+  @@unique([recordingId, artistId, role])
+  @@index([recordingId])
+  @@index([artistId])
+  @@map("recording_artists") 
+}
+
+//================================================================================================
+// RELEASE TRACK 
+// RELEASE <-> RECORDING
+//================================================================================================
+
+model ReleaseTrack {
+  id          Int      @id @default(autoincrement())
+
+  releaseId   Int      @map("release_id")
+  recordingId Int      @map("recording_id")
+
+  trackNumber Int       @map("track_number")
+
+  release     Release   @relation(fields:[releaseId], references: [id], onDelete: Cascade)
+  recording   Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@unique([releaseId, trackNumber])
+  @@index([releaseId])
+  @@index([recordingId])
+  @@map("release_tracks") 
+}
+
+//================================================================================================
+// GENRE
+//================================================================================================
+
+model Genre {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique @db.VarChar(100)
+  description String?
+
+  parentId    Int?     @map("parent_id")
+  parent      Genre?   @relation("GenreHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Genre[]  @relation("GenreHierarchy")
+
+  releases    ReleaseGenre[]
+  recordings  RecordingGenre[]
+
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+
+  @@index([name])
+  @@index([parentId])
+  @@map("genres")
+}
+
+//================================================================================================
+// RELEASE <-> GENRE
+//================================================================================================
+
+model ReleaseGenre {
+  id          Int     @id @default(autoincrement())
+
+  releaseId   Int     @map("release_id")
+  genreId     Int     @map("genre_id")
+
+  release     Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  genre       Genre   @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@unique([releaseId, genreId])
+  @@index([releaseId])
+  @@index([genreId])
+  @@map("release_genres")
+}
+
+//================================================================================================
+// RECORDING <-> GENRE
+//================================================================================================
+
+model RecordingGenre {
+  id              Int         @id @default(autoincrement())
+  recordingId     Int         @map("recording_id")
+  genreId         Int         @map("genre_id")
+
+  recording       Recording   @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  genre           Genre       @relation(fields: [genreId], references:[id], onDelete: Cascade)
+
+  @@unique([recordingId, genreId])
+  @@index([recordingId])
+  @@index([genreId])
+  @@map("recording_genres")   
+}
+
+//================================================================================================
+// DESCRIPTOR
+//================================================================================================
+
+model Descriptor {
+  id            Int                   @id @default(autoincrement())
+  name          String                @unique @db.VarChar(100)
+  description   String? 
+
+  releases      ReleaseDescriptor[]
+  recordings    RecordingDescriptor[]
+
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @updatedAt @map("updated_at")
+
+  @@index([name])
+  @@map("descriptors")
+}
+
+//================================================================================================
+// RELEASE <-> DESCRIPTOR
+//================================================================================================
+
+model ReleaseDescriptor {
+  id            Int         @id @default(autoincrement())
+  releaseId     Int         @map("release_id")
+  descriptorId  Int         @map("descriptor_id")
+
+  release       Release     @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  descriptor    Descriptor  @relation(fields: [descriptorId], references: [id], onDelete: Cascade)
+
+  @@unique([releaseId, descriptorId])
+  @@index([releaseId])
+  @@index([descriptorId])
+  @@map("release_descriptors")
+}
+
+//================================================================================================
+// RECORDING <-> DESCRIPTOR
+//================================================================================================
+
+model RecordingDescriptor {
+  id              Int         @id @default(autoincrement())
+
+  recordingId     Int         @map("recording_id")
+  descriptorId    Int         @map("descriptor_id")
+
+  recording       Recording   @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  descriptor      Descriptor  @relation(fields: [descriptorId], references: [id], onDelete: Cascade)
+
+  @@unique([recordingId, descriptorId])
+  @@index([recordingId])
+  @@index([descriptorId])
+  @@map("recording_descriptors")
+}
+
+//================================================================================================
+// CREDIT
+//================================================================================================
+
+model Credit {
+  id            Int         @id @default(autoincrement())
+
+  recordingId   Int         @map("recording_id")
+  artistId      Int         @map("artist_id")
+
+  role          CreditRole
+  instrument    String?     @db.VarChar(100)
+
+  recording     Recording   @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  artist        Artist      @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId])
+  @@index([artistId])
+  @@map("credits")
+}
+
+//================================================================================================
+// RATINGS
+//================================================================================================
+
+model Rating {
+  id          Int         @id @default(autoincrement())
+  
+  userId      Int         @map("user_id")
+  releaseId   Int         @map("release_id")
+
+  rating      Int
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  release     Release     @relation(fields:[releaseId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  @@unique([userId, releaseId])
+  @@index([releaseId])
+  @@index([userId])
+  @@map("ratings")
+}
+
+//================================================================================================
+// REVIEWS
+//================================================================================================
+
+model Review {
+  id        Int         @id @default(autoincrement())
+
+  userId    Int         @map("user_id")
+  releaseId Int         @map("release_id")
+  
+  title     String?     @db.VarChar(255)
+  content   String  
+
+  user      User        @relation(fields: [userId], references:[id], onDelete: Cascade)
+  release   Release     @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+
+  comments  Comment[]
+
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([releaseId])
+  @@map("reviews")  
+}
+
+//================================================================================================
+// COMMENTS
+//================================================================================================
+
+model Comment {
+  id          Int       @id @default(autoincrement())
+
+  userId      Int       @map("user_id")
+  reviewId    Int       @map("review_id")
+
+  content     String
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  review      Review    @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([reviewId])
+  @@index([userId])
+  @@map("comments")
+}
+
+//================================================================================================
+// FOLLOWS
+//================================================================================================
+
+model Follow {
+  id            Int       @id @default(autoincrement())
+
+  followerId    Int       @map("follower_id")
+  followingId   Int       @map("following_id")
+
+  follower      User      @relation("UserFollowers", fields: [followerId], references: [id], onDelete: Cascade)
+  following     User      @relation("UserFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@map("follows")
+}
+
+//================================================================================================
+// PLAYLISTS
+//================================================================================================
+
+model Playlist {
+  id            Int      @id @default(autoincrement())
+
+  title         String   @db.VarChar(255)
+  description   String?   
+
+  authorId      Int      @map("author_id")
+
+  author        User     @relation(fields: [authorId], references: [id], onDelete: Cascade)   
+
+  recordings    PlaylistRecording[]
+
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([authorId])
+  @@map("playlists")
+}
+
+//================================================================================================
+// PLAYLIST <-> RECORDING
+//================================================================================================
+
+model PlaylistRecording {
+  id            Int       @id @default(autoincrement())
+
+  playlistId    Int       @map("playlist_id")
+  recordingId   Int       @map("recording_id")
+
+  position      Int
+
+  playlist      Playlist  @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  recording     Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@unique([playlistId, position])
+  @@index([playlistId])
+  @@index([recordingId])
+  @@map("playlist_recordings")
+}
+
+//================================================================================================
+// LISTENING HISTORY
+//================================================================================================
+
+model ListeningHistory {
+  id                      Int      @id @default(autoincrement())
+
+  userId                  Int      @map("user_id")
+  recordingId             Int      @map("recording_id")
+
+  playedAt                DateTime @default(now()) @map("played_at")
+  durationPlayedSeconds   Int?     @map("duration_played_seconds") 
+
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recording               Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@index([userId, playedAt])
+  @@index([recordingId])
+  @@index([playedAt])
+  @@map("listening_history")
+}
+
+//================================================================================================
+// USER-TO-USER RECOMMENDATIONS
+//================================================================================================
+
+model Recommendation {
+  id            Int       @id @default(autoincrement())
+
+  fromUserId    Int       @map("from_user_id")
+  toUserId      Int       @map("to_user_id")
+
+  releaseId     Int?      @map("release_id")
+  recordingId   Int?      @map("recording_id")
+
+  message       String? 
+
+  createdAt     DateTime    @default(now()) @map("created_at")
+  readAt        DateTime?   @map("read_at")
+
+  fromUser      User        @relation("RecommendationsSent", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser        User        @relation("RecommendationsReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  release       Release?    @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  recording     Recording?  @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@index([createdAt])
+  @@index([releaseId])
+  @@index([recordingId])
+  @@map("recommendations")
+}
