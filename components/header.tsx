@@ -1,7 +1,11 @@
+"use client";
+
+import { useAuth } from "@/app/hooks/useAuth";
 import Image from "next/image";
 import Link from "next/link";
 
 export default function Header() {
+  const { isAuthenticated, user, logout, isLoading } = useAuth();
   return (
     <header className="flex items-center justify-between text-slate-100">
       <Link href="/">
@@ -22,12 +26,23 @@ export default function Header() {
         <button>Search</button>
       </div>
       <div className="flex gap-5 items-center mx-10">
-        <button>
-          <Link href="/login">Login</Link>
-        </button>
-        <button>
-          <Link href="/register">Register</Link>
-        </button>
+        {isLoading ? (
+          <span>Loading</span>
+        ) : isAuthenticated ? (
+          <div className="flex gap-5 items-center mx-10">
+            <span>Hello {user?.username}</span>
+            <button onClick={logout}>Logout</button>
+          </div>
+        ) : (
+          <div className="flex gap-5 items-center mx-10">
+            <button>
+              <Link href="/login">Login</Link>
+            </button>
+            <button>
+              <Link href="/register">Register</Link>
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

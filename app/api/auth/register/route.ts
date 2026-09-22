@@ -1,5 +1,5 @@
+import { generateToken, hashPassword, setAuthCookie } from "@/backend/lib/auth";
 import { prisma } from "@/backend/lib/prisma";
-import bcrypt from "bcrypt";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -7,7 +7,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const { email, username, password } = body;
-
     // Basic Validation
     if (
       typeof email !== "string" ||
@@ -24,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if the user already exists
-    // Emails and Usernames must be unique
+    // Emails and usernames must be unique
     const existingEmail = await prisma.user.findUnique({
       where: { email },
     });
@@ -48,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Hash the password before storing it
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await hashPassword(password);
 
     const user = await prisma.user.create({
       data: {
@@ -56,20 +55,36 @@ export async function POST(request: NextRequest) {
         username: username.trim(),
         password: hashedPassword,
       },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        createdAt: true,
-      },
     });
 
-    return NextResponse.json(user, { status: 201 });
+    // Generate token
+    const token = generateToken({
+      id: user.id,
+      email: user.email,
+      username: user.username,
+    });
+
+    // Create response with httpOnly cookie
+    const response = NextResponse.json(
+      {
+        message: "User registered successfully",
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+        },
+      },
+      { status: 201 },
+    );
+
+    // Set httpOnly cookie
+    setAuthCookie(response, token);
+    return response;
   } catch (error) {
-    console.error("Error creating user:", error);
+    console.error("Registration error:", error);
 
     return NextResponse.json(
-      { error: "failed to create user" },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

@@ -13,32 +13,32 @@ export default function Sidenav() {
 
   const navItems = [
     {
-      name: "Home",
-      href: "/",
-      active: pathname === "/",
+      name: "Dashboard",
+      href: "/dashboard",
+      active: pathname === "/dashboard",
       position: "top",
     },
     {
       name: "Songs",
-      href: "/songs",
+      href: "/dashboard/songs",
       active: isNavItemActive(pathname, "/songs"),
       position: "top",
     },
     {
       name: "Albums",
-      href: "/albums",
+      href: "/dashboard/albums",
       active: isNavItemActive(pathname, "/albums"),
       position: "top",
     },
     {
       name: "Artists",
-      href: "/artists",
+      href: "/dashboard/artists",
       active: isNavItemActive(pathname, "/artists"),
       position: "top",
     },
     {
       name: "Playlists",
-      href: "/playlists",
+      href: "/dashboard/playlists",
       active: isNavItemActive(pathname, "/playlists"),
       position: "top",
     },
